@@ -1,4 +1,4 @@
-`include "sboxes.v"
+
 //    2020-01-29    Markku-Juhani O. Saarinen <mjos@pqshield.com>
 //    Copyright (c) 2020, PQShield Ltd. All rights reserved.
 
@@ -32,6 +32,9 @@
 
 //
 //    The shared non-linear middle part for AES, AES^-1, and SM4.
+
+`include "sboxes.v"
+
 module riscv_crypto_sbox_inv_mid(
 input   [20:0] x    ,
 output  [17:0] y

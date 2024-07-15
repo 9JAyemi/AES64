@@ -37,8 +37,9 @@
 //   saes64.decsm   |         |    x    | SAES_DEC_EN
 //
 
-`include "riscv_crypto_fu_sboxes (1).v"
-`include "../AES64/riscv_crypto_fu_aes_mix_columns.v"
+`include "riscv_crypto_fu_sboxes_taint.v"
+`include "riscv_crypto_fu_aes_mix_columns_taint.v"
+
 module riscv_crypto_fu_saes64 #(
 parameter SAES_DEC_EN = 1 , // Enable the saes64 decrypt instructions.
 parameter SAES64_SBOXES = 8   // saes64 sbox instances. Valid values: 8,4
@@ -61,15 +62,55 @@ input  wire         op_saes64_decs  , // RV64 AES Decrypt SBox
 input  wire         op_saes64_decsm , // RV64 AES Decrypt SBox + MixCols
 
 output wire [ 63:0] rd              , // output destination register value.
-output wire         ready             // Compute finished?
+output wire         ready           ,             // Compute finished?
+
+// -----Taint Signals-----
+input  wire valid_t           , 
+input  wire rs1_t             , 
+input  wire rs2_t             ,
+input  wire enc_rcon_t        , 
+
+input  wire op_saes64_ks1_t   , 
+input  wire op_saes64_ks2_t  , 
+input  wire op_saes64_imix_t  , 
+input  wire op_saes64_encs_t  , 
+input  wire op_saes64_encsm_t , 
+input  wire op_saes64_decs_t  ,
+input  wire op_saes64_decsm_t ,
+
+output wire  rd_t              ,
+output wire  ready_t             
 
 );
+
+// ---- Taint Logic ----
+
+function OR_t;
+    input op1;
+    input op2;
+    input op1_t;
+    input op2_t;
+
+    OR_t = (~op1 & op2_t) | (~op2 & op1_t) | (op1_t & op2_t);
+endfunction
+
+function AND_t;
+    input op1;
+    input op2;
+    input op1_t;
+    input op2_t;
+
+    AND_t = (op1_t & op2_t) | (op1_t & ~op2_t & op2) | (~op1_t & op2_t & op1);
+endfunction
+
 
 // Select I'th byte of X.
 `define BY(X,I) X[7+8*I:8*I]
 
 // Always finish in a single cycle.
 assign     ready            = valid && sbox_ready;
+
+assign      ready_t         = AND_t(valid, sbox_ready, valid_t, sbox_ready_t)
 
 // AES Round Constants
 wire [ 7:0] rcon [0:15];
@@ -82,6 +123,16 @@ assign rcon[ 5] = 8'h20; assign rcon[13] = 8'h00;
 assign rcon[ 6] = 8'h40; assign rcon[14] = 8'h00;
 assign rcon[ 7] = 8'h80; assign rcon[15] = 8'h00;
 
+// AES Round Constants taint values
+wire [ 7:0] rcon_t [0:15];
+assign rcon_t[ 0] = 8'h00; assign rcon_t[ 8] = 8'h00;
+assign rcon_t[ 1] = 8'h00; assign rcon_t[ 9] = 8'h00;
+assign rcon_t[ 2] = 8'h00; assign rcon_t[10] = 8'h00;
+assign rcon_t[ 3] = 8'h00; assign rcon_t[11] = 8'h00;
+assign rcon_t[ 4] = 8'h00; assign rcon_t[12] = 8'h00;
+assign rcon_t[ 5] = 8'h00; assign rcon_t[13] = 8'h00;
+assign rcon_t[ 6] = 8'h00; assign rcon_t[14] = 8'h00;
+assign rcon_t[ 7] = 8'h00; assign rcon_t[15] = 8'h00;
 
 //
 // Shift Rows
@@ -92,17 +143,37 @@ wire [31:0] row_1   = {`BY(rs1,1),`BY(rs1,5),`BY(rs2,1),`BY(rs2,5)};
 wire [31:0] row_2   = {`BY(rs1,2),`BY(rs1,6),`BY(rs2,2),`BY(rs2,6)};
 wire [31:0] row_3   = {`BY(rs1,3),`BY(rs1,7),`BY(rs2,3),`BY(rs2,7)};
 
+// Shift Rows Taint
+// ------------------------------------------------------------------
+
+wire row_0_t = rs1_t || rs2_t;
+wire row_1_t = rs1_t || rs2_t;
+wire row_2_t = rs1_t || rs2_t;
+wire row_3_t = rs1_t || rs2_t;
+
 // Forward shift rows
 wire [31:0] fsh_0   =  row_0;                      
 wire [31:0] fsh_1   = {row_1[23: 0], row_1[31:24]};
 wire [31:0] fsh_2   = {row_2[15: 0], row_2[31:16]};
 wire [31:0] fsh_3   = {row_3[ 7: 0], row_3[31: 8]};
 
+// Forward shift rows taint
+wire [31:0] fsh_0_t   =  row_0_t                      
+wire [31:0] fsh_1_t   = row_1_t
+wire [31:0] fsh_2_t   = row_2_t
+wire [31:0] fsh_3_t   = row_3_t
+
 // Inverse shift rows
 wire [31:0] ish_0   =  row_0;
 wire [31:0] ish_1   = {row_1[ 7: 0], row_1[31: 8]};
 wire [31:0] ish_2   = {row_2[15: 0], row_2[31:16]};
 wire [31:0] ish_3   = {row_3[23: 0], row_3[31:24]};
+
+// Inverse shift rows taint
+wire [31:0] ish_0_t  =  row_0_t;
+wire [31:0] ish_1_t   = row_1_t;
+wire [31:0] ish_2_t  = row_2_t;
+wire [31:0] ish_3_t   = row_3_t;
 
 //
 // Re-construct columns from rows
@@ -113,10 +184,23 @@ wire [31:0] i_col_1 = {`BY(ish_3,2),`BY(ish_2,2),`BY(ish_1,2),`BY(ish_0,2)};
 wire [31:0] i_col_0 = {`BY(ish_3,3),`BY(ish_2,3),`BY(ish_1,3),`BY(ish_0,3)};
 
 //
+
+// Re-construct columns from rows taint
+wire f_col_1_t = fsh_3_t || fsh_2_t || fsh_1_t || fsh_0_t;
+wire f_col_0_t = fsh_3_t || fsh_2_t || fsh_1_t || fsh_0_t;
+
+wire i_col_1_t = ish_3_t || ish_2_t || ish_1_t || ish_0_t;
+wire i_col_0_t = ish_3_t || ish_2_t || ish_1_t || ish_0_t;
+
 // Hi/Lo selection
 
 wire [63:0] shiftrows_enc = {f_col_1, f_col_0};
 wire [63:0] shiftrows_dec = {i_col_1, i_col_0};
+
+// Hi/Lo selection taints
+
+wire shiftrows_enc_t = f_col_1_t || f_col_0_t;
+wire shiftrows_dec_t = i_col_1_t || i_col_0_t;
 
 //
 // SubBytes
@@ -129,7 +213,15 @@ wire [ 7:0] sb_fwd_out [7:0];
 wire [ 7:0] sb_inv_in  [7:0];
 wire [ 7:0] sb_inv_out [7:0];
 
+// SBox input/output taints
+wire sb_fwd_in_t;
+wire sb_fwd_out_t;
+wire sb_inv_in_t;
+wire sb_inv_out_t;
+
+
 wire        sbox_ready      ;
+wire        sbox_ready_t    ;
 
 //
 // KeySchedule 1 SBox input selection
@@ -239,19 +331,25 @@ generate if(SAES64_SBOXES == 8) begin : saes64_8_sboxes
 
         riscv_crypto_aes_fwd_sbox i_fwd_sbox (
             .in(sb_fwd_in [i]),
-            .fx(sb_fwd_out[i])
+            .in_t(sb_fwd_in_t),
+            .fx(sb_fwd_out[i]),
+            .fx_t(sb_fwd_out_t)
         );
 
         if(SAES_DEC_EN) begin : saes64_dec_sboxes_implemented
 
             riscv_crypto_aes_inv_sbox i_inv_sbox (
                 .in(sb_inv_in [i]),
-                .fx(sb_inv_out[i])
+                .in_t(sb_inv_in_t),
+                .fx(sb_inv_out[i]),
+                .fx_t(sb_inv_out_t)
+
             );
 
         end else begin  : saes64_dec_sboxes_not_implemented
 
             assign sb_inv_out[i] = 8'b0;
+            assign sb_inv_out_t = 0 //question if this is the right approach
 
         end
 
