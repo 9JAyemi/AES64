@@ -238,13 +238,13 @@ wire [31:0] ks1_sbout   = e_sbout[31:0] ^ {24'b0, rconst};
 
 // KeySchedule 1 SBOX input selection taint
 wire rcon_rot_t = enc_rcon_t; //ask about optimization with this given its a boolean value
-wire rconst_t = rcon_rot_t || rcon_t;
+wire rconst_t = rcon_rot_t || rcon_t[enc_rcon];
 wire ks1_sb3_t = rcon_rot_t || rs1_t;
 wire ks1_sb2_t = rcon_rot_t || rs1_t;
 wire ks1_sb1_t = rcon_rot_t || rs1_t;
 wire ks1_sb0_t = rcon_rot_t || rs1_t;
 
-wire ks1_sbout_t = e_sbout_t || rconst_t
+wire ks1_sbout_t = e_sbout_t || rconst_t;
 
 // If just doing sub-bytes, sbox inputs direct from rs1.
 assign      sb_fwd_in[0]= op_saes64_ks1 ? ks1_sb0 : `BY(shiftrows_enc, 0);
@@ -276,7 +276,7 @@ wire [63:0] d_sbout     = {
 };
 
 // Decrypt sbox output taint
-wire d_sbout_t = sb_inv_out;
+wire d_sbout_t = sb_inv_out_t;
 
 // Encrypt sbox output
 wire [63:0] e_sbout     = {
@@ -305,8 +305,8 @@ wire [31:0] mix_dec_i0  = op_saes64_imix ? rs1[31: 0] : d_sbout[31: 0];
 wire [31:0] mix_dec_i1  = op_saes64_imix ? rs1[63:32] : d_sbout[63:32];
 
 // Inverse MixColumns input taints.
-wire mix_dec_i0 = (op_saes64_imix_t ? rs1_t : d_sbout_t) || (op_saes64_imix_t && (rs1_t != d_sbout_t));
-wire mix_dec_i1 = (op_saes64_imix_t ? rs1_t : d_sbout_t) || (op_saes64_imix_t && (rs1_t != d_sbout_t));
+wire mix_dec_i0_t = (op_saes64_imix_t ? rs1_t : d_sbout_t) || (op_saes64_imix_t && (rs1_t != d_sbout_t));
+wire mix_dec_i1_t = (op_saes64_imix_t ? rs1_t : d_sbout_t) || (op_saes64_imix_t && (rs1_t != d_sbout_t));
 
 // Forward MixColumns outputs.
 wire [31:0] mix_enc_o0  ;
