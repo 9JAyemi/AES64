@@ -352,6 +352,26 @@ assign rd =
     wire result_ks1_t = ks1_sbout_t;
     wire result_ks2_t = rs1_t || rs2_t;
     wire mix_t = OR_t(op_saes64_encsm, op_saes64_decsm, op_saes64_encsm_t, op_saes64_decsm_t);
+    wire result_enc_t = (mix_t || e_sbout_t);
+    wire result_dec_t = (mix_t || d_sbout_t);
+
+    wire op_enc_t = OR_t(op_saes64_encs, op_saes64_encsm, op_saes64_encs_t, op_saes64_encsm_t);
+    wire op_dec_t = OR_t(op_saes64_decs, op_saes64_decsm, op_saes64_decs_t, op_saes64_decsm_t);
+
+// Used for rd_t
+    wire x = op_saes64_ks1 & result_ks1;
+    wire x_t = AND_t(op_saes64_ks1, result_ks1, op_saes64_ks1_t, result_ks1_t);
+    wire y = op_saes64_ks2 & result_ks2;
+    wire y_t = AND_t(op_saes64_ks2, result_ks2, op_saes64_ks2_t, result_ks2_t);
+    wire a = op_enc & result_enc;
+    wire a_t = AND_t(op_enc, result_enc, op_enc_t, result_enc_t);
+    wire b = op_dec & result_dec;
+    wire b_t = AND_t(op_dec, result_dec, op_dec_t, result_dec_t);
+    wire c = op_saes64_imix & result_imix;
+    wire c_t = op_saes64_imix_t;
+
+    assign rd_t = OR_t(x,y,x_t,y_t) || OR_t(a,b,a_t,b_t) || c_t;
+// -------------------------------------------------------------------
 //
 // Generate AES SBox instances
 // ------------------------------------------------------------
@@ -397,16 +417,24 @@ end else if(SAES64_SBOXES == 4) begin : saes64_4_sboxes
     wire sbox_instr = op_saes64_encs || op_saes64_encsm ||
                       op_saes64_decs || op_saes64_decsm ||
                       op_saes64_ks1  ;
+    wire sbox_instr_t = OR_t(op_saes64_encs, op_saes64_encsm, op_saes64_encs_t, op_saes64_encsm_t) || 
+                        OR_t(op_saes64_decs, op_saes64_decsm, op_saes64_decs_t, op_saes64_decsm_t) ||
+                        op_saes64_ks1_t;
 
     reg sbox_hi;
+    wire sbox_hi_t;
 
     reg [7:0]   sbox_regs [3:0];
     wire[7:0] n_sbox_inv  [3:0];
     wire[7:0] n_sbox_fwd  [3:0];
 
     wire      sbox_reg_ld_en = !sbox_hi && sbox_instr && valid;
+    wire      sbox_reg_ld_en_t = AND_t(sbox_instr, valid, sbox_instr_t, valid_t);
 
     assign sbox_ready = sbox_hi && sbox_instr || !sbox_instr;
+    assign sbox_ready_t = sbox_instr_t;
+
+    wire sbox_regs_t;
 
     for(i = 0; i < 4; i = i + 1) begin
 
@@ -414,8 +442,10 @@ end else if(SAES64_SBOXES == 4) begin : saes64_4_sboxes
             if(sbox_reg_ld_en) begin
                 if(op_dec) begin
                     sbox_regs[i] <= n_sbox_inv[i];
+                    sbox_regs <= sbox_reg_ld_en_t || op_dec_t;
                 end else begin
                     sbox_regs[i] <= n_sbox_fwd[i];
+                    sbox_regs <= sbox_reg_ld_en_t || op_dec_t;
                 end
             end
         end
@@ -424,17 +454,24 @@ end else if(SAES64_SBOXES == 4) begin : saes64_4_sboxes
         assign sb_inv_out[i+4] = n_sbox_inv[i  ];
         assign sb_fwd_out[i  ] = sbox_regs [i  ];
         assign sb_fwd_out[i+4] = n_sbox_fwd[i  ];
+
+        assign sb_inv_out_t = sbox_regs_t;
+        assign sb_fwd_out_t = sbox_regs_t;
         
         riscv_crypto_aes_fwd_sbox i_fwd_sbox (
             .in(sb_fwd_in [i + (sbox_hi ? 4 : 0)]),
-            .fx(n_sbox_fwd[i                    ])
+            .in_t(sb_fwd_in_t),
+            .fx(n_sbox_fwd[i                    ]),
+            .fx(0)
         );
 
         if(SAES_DEC_EN) begin : saes64_dec_sboxes_implemented
 
             riscv_crypto_aes_inv_sbox i_inv_sbox (
                 .in(sb_inv_in [i + (sbox_hi ? 4 : 0)]),
-                .fx(n_sbox_inv[i                    ])
+                .in_t(sb_inv_in_t),
+                .fx(n_sbox_inv[i                    ]),
+                .fx_t(0)
             );
 
         end else begin  : saes64_dec_sboxes_not_implemented
@@ -450,8 +487,10 @@ end else if(SAES64_SBOXES == 4) begin : saes64_4_sboxes
             sbox_hi <= 1'b0;
         end else if(valid && ready) begin
             sbox_hi <= 1'b0;
+            sbox_hi_t = AND_t(valid, ready, valid_t, ready_t);
         end else if(valid && sbox_instr) begin
             sbox_hi <= 1'b1;
+            sbox_hi_t = AND_t(valid, sbox_instr, valid_t, sbox_instr_t);
         end
     end
 
