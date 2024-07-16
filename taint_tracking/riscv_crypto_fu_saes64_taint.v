@@ -110,7 +110,7 @@ endfunction
 // Always finish in a single cycle.
 assign     ready            = valid && sbox_ready;
 
-assign      ready_t         = AND_t(valid, sbox_ready, valid_t, sbox_ready_t)
+assign      ready_t         = AND_t(valid, sbox_ready, valid_t, sbox_ready_t);
 
 // AES Round Constants
 wire [ 7:0] rcon [0:15];
@@ -158,10 +158,10 @@ wire [31:0] fsh_2   = {row_2[15: 0], row_2[31:16]};
 wire [31:0] fsh_3   = {row_3[ 7: 0], row_3[31: 8]};
 
 // Forward shift rows taint
-wire [31:0] fsh_0_t   =  row_0_t                      
-wire [31:0] fsh_1_t   = row_1_t
-wire [31:0] fsh_2_t   = row_2_t
-wire [31:0] fsh_3_t   = row_3_t
+wire [31:0] fsh_0_t   =  row_0_t  ;                    
+wire [31:0] fsh_1_t   = row_1_t;
+wire [31:0] fsh_2_t   = row_2_t;
+wire [31:0] fsh_3_t   = row_3_t;
 
 // Inverse shift rows
 wire [31:0] ish_0   =  row_0;
@@ -235,6 +235,17 @@ wire [ 7:0] ks1_sb0     = rcon_rot ? rs1[47:40] : rs1[39:32];
 
 wire [31:0] ks1_sbout   = e_sbout[31:0] ^ {24'b0, rconst};
 
+
+// KeySchedule 1 SBOX input selection taint
+wire rcon_rot_t = enc_rcon_t; //ask about optimization with this given its a boolean value
+wire rconst_t = rcon_rot_t || rcon_t;
+wire ks1_sb3_t = rcon_rot_t || rs1_t;
+wire ks1_sb2_t = rcon_rot_t || rs1_t;
+wire ks1_sb1_t = rcon_rot_t || rs1_t;
+wire ks1_sb0_t = rcon_rot_t || rs1_t;
+
+wire ks1_sbout_t = e_sbout_t || rconst_t
+
 // If just doing sub-bytes, sbox inputs direct from rs1.
 assign      sb_fwd_in[0]= op_saes64_ks1 ? ks1_sb0 : `BY(shiftrows_enc, 0);
 assign      sb_fwd_in[1]= op_saes64_ks1 ? ks1_sb1 : `BY(shiftrows_enc, 1);
@@ -254,17 +265,27 @@ assign      sb_inv_in[5]= `BY(shiftrows_dec, 5);
 assign      sb_inv_in[6]= `BY(shiftrows_dec, 6);
 assign      sb_inv_in[7]= `BY(shiftrows_dec, 7);
 
+// taint variation of sbox inouts direct from rs1
+assign      sb_fwd_in_t = (op_saes64_ks1 ? ks1_sb0_t : shiftrows_enc_t) || (sb_fwd_in_t && (ks1_sb0_t != shiftrows_enc_t));
+assign      sb_inv_in_t = shiftrows_dec_t;
+
 // Decrypt sbox output
 wire [63:0] d_sbout     = {
     sb_inv_out[7], sb_inv_out[6], sb_inv_out[5], sb_inv_out[4],
     sb_inv_out[3], sb_inv_out[2], sb_inv_out[1], sb_inv_out[0] 
 };
 
+// Decrypt sbox output taint
+wire d_sbout_t = sb_inv_out;
+
 // Encrypt sbox output
 wire [63:0] e_sbout     = {
     sb_fwd_out[7], sb_fwd_out[6], sb_fwd_out[5], sb_fwd_out[4],
     sb_fwd_out[3], sb_fwd_out[2], sb_fwd_out[1], sb_fwd_out[0] 
 };
+
+// Encrypt sbox output taint
+wire e_sbout_t = sb_fwd_out_t;
 
 //
 // MixColumns
@@ -274,9 +295,18 @@ wire [63:0] e_sbout     = {
 wire [31:0] mix_enc_i0  =                               e_sbout[31: 0];
 wire [31:0] mix_enc_i1  =                               e_sbout[63:32];
 
+// Forward MixColumns input taints.
+wire mix_enc_i0_t = e_sbout_t;
+wire mix_enc_i1_t = e_sbout_t;
+
+
 // Inverse MixColumns inputs.
 wire [31:0] mix_dec_i0  = op_saes64_imix ? rs1[31: 0] : d_sbout[31: 0];
 wire [31:0] mix_dec_i1  = op_saes64_imix ? rs1[63:32] : d_sbout[63:32];
+
+// Inverse MixColumns input taints.
+wire mix_dec_i0 = (op_saes64_imix_t ? rs1_t : d_sbout_t) || (op_saes64_imix_t && (rs1_t != d_sbout_t));
+wire mix_dec_i1 = (op_saes64_imix_t ? rs1_t : d_sbout_t) || (op_saes64_imix_t && (rs1_t != d_sbout_t));
 
 // Forward MixColumns outputs.
 wire [31:0] mix_enc_o0  ;
@@ -298,6 +328,7 @@ wire [63:0] result_ks2  = {
     rs1[63:32] ^ rs2[31: 0]
 };
 
+
 wire        mix         = op_saes64_encsm || op_saes64_decsm        ;
 
 wire [63:0] result_enc  = mix ? {mix_enc_o1, mix_enc_o0} : e_sbout  ;
@@ -316,6 +347,11 @@ assign rd =
     {64{op_dec                 }} & result_dec     |
     {64{op_saes64_imix         }} & result_imix    ;
 
+// Result gathering taints
+// ------------------------------------------------------------
+    wire result_ks1_t = ks1_sbout_t;
+    wire result_ks2_t = rs1_t || rs2_t;
+    wire mix_t = OR_t(op_saes64_encsm, op_saes64_decsm, op_saes64_encsm_t, op_saes64_decsm_t);
 //
 // Generate AES SBox instances
 // ------------------------------------------------------------
@@ -349,7 +385,7 @@ generate if(SAES64_SBOXES == 8) begin : saes64_8_sboxes
         end else begin  : saes64_dec_sboxes_not_implemented
 
             assign sb_inv_out[i] = 8'b0;
-            assign sb_inv_out_t = 0 //question if this is the right approach
+            assign sb_inv_out_t = 0; //question if this is the right approach
 
         end
 

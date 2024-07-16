@@ -519,7 +519,7 @@ module riscv_crypto_aes_fwd_sbox (
     wire t2_t;
     
     riscv_crypto_sbox_aes_top top ( .y(t1), .x(in) );
-    riscv_crypto_sbox_aes_top_t top_t (.y(t1), .x(in_t));
+    riscv_crypto_sbox_aes_top_t top_t (.y(t1_t), .x(in_t));
     riscv_crypto_sbox_inv_mid mid ( .y(t2), .x(t1) );
     riscv_crypto_sbox_inv_mid_t mid_t ( .y(t2_t), .x(t1_t) );
     riscv_crypto_sbox_aes_out out ( .y(fx), .x(t2) );
