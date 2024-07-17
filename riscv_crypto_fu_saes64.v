@@ -38,7 +38,7 @@
 //   saes64.decsm   |         |    x    | SAES_DEC_EN
 //
 
-`include "riscv_crypto_fu_sboxes (1).v"
+`include "riscv_crypto_fu_sboxes.v"
 `include "../AES64/riscv_crypto_fu_aes_mix_columns.v"
 module riscv_crypto_fu_saes64 #(
 parameter SAES_DEC_EN = 1 , // Enable the saes64 decrypt instructions.
