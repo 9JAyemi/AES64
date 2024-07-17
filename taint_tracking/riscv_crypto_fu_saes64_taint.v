@@ -422,7 +422,7 @@ end else if(SAES64_SBOXES == 4) begin : saes64_4_sboxes
                         op_saes64_ks1_t;
 
     reg sbox_hi;
-    wire sbox_hi_t;
+    reg sbox_hi_t;
 
     reg [7:0]   sbox_regs [3:0];
     wire[7:0] n_sbox_inv  [3:0];
@@ -434,7 +434,7 @@ end else if(SAES64_SBOXES == 4) begin : saes64_4_sboxes
     assign sbox_ready = sbox_hi && sbox_instr || !sbox_instr;
     assign sbox_ready_t = sbox_instr_t;
 
-    wire sbox_regs_t;
+    reg sbox_regs_t;
 
     for(i = 0; i < 4; i = i + 1) begin
 
@@ -442,10 +442,10 @@ end else if(SAES64_SBOXES == 4) begin : saes64_4_sboxes
             if(sbox_reg_ld_en) begin
                 if(op_dec) begin
                     sbox_regs[i] <= n_sbox_inv[i];
-                    sbox_regs <= sbox_reg_ld_en_t || op_dec_t;
+                    sbox_regs_t <= sbox_reg_ld_en_t || op_dec_t;
                 end else begin
                     sbox_regs[i] <= n_sbox_fwd[i];
-                    sbox_regs <= sbox_reg_ld_en_t || op_dec_t;
+                    sbox_regs_t <= sbox_reg_ld_en_t || op_dec_t;
                 end
             end
         end
@@ -487,10 +487,10 @@ end else if(SAES64_SBOXES == 4) begin : saes64_4_sboxes
             sbox_hi <= 1'b0;
         end else if(valid && ready) begin
             sbox_hi <= 1'b0;
-            sbox_hi_t = AND_t(valid, ready, valid_t, ready_t);
+            sbox_hi_t <= AND_t(valid, ready, valid_t, ready_t);
         end else if(valid && sbox_instr) begin
             sbox_hi <= 1'b1;
-            sbox_hi_t = AND_t(valid, sbox_instr, valid_t, sbox_instr_t);
+            sbox_hi_t <= AND_t(valid, sbox_instr, valid_t, sbox_instr_t);
         end
     end
 
