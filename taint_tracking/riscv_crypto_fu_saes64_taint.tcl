@@ -3,7 +3,7 @@ analyze -sv riscv_crypto_fu_saes64_taint.v
 elaborate -top riscv_crypto_fu_saes64
 
 clock g_clk
-reset g_restn -non_resettable_regs 0
+reset g_resetn -non_resettable_regs 0
 
 
 # check once the computation is finsihed that there is no 
