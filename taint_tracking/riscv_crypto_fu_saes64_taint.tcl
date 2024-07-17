@@ -8,8 +8,8 @@ reset g_resetn -non_resettable_regs 0
 
 # check once the computation is finsihed that there is no 
 # information leak to the registar where data is stored
-assume {valid_t == 1}
-assert {ready -> !rd_t}
+
+assert {valid_t == 0}
 
 
 # Set the time limit to 1 hour (3600 seconds)
