@@ -25,8 +25,8 @@ input  op_saes64_decsm  // RV64 AES Decrypt SBox + MixCols
 // Internal Wires
 wire readyOne;
 wire readyTwo;
-output [ 63:0] rd1;
-output [63:0]  rd2;  
+wire [ 63:0] rd1;
+wire [63:0]  rd2;  
 
 riscv_crypto_fu_saes64 num1(
     .g_clk(g_clk),
