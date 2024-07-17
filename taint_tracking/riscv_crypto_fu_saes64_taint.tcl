@@ -1,6 +1,6 @@
-analyze -sv riscv_crypto_fu_saes32_taint.v
+analyze -sv riscv_crypto_fu_saes64_taint.v
 
-elaborate -top riscv_crypto_fu_saes32
+elaborate -top riscv_crypto_fu_saes64
 
 clock g_clk
 reset g_restn
