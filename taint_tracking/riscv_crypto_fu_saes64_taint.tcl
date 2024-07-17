@@ -8,7 +8,7 @@ reset g_resetn -non_resettable_regs 0
 
 # check once the computation is finsihed that there is no 
 # information leak to the registar where data is stored
-assume {rs1_t == 0 && valid_t == 0}
+assume {rs1_t == 0 && valid_t == 0 && rs2_t == 0 && enc_rcon_t == 0 && op_saes64_ks1_t == 0 && op_saes64_ks2_t == 0 && op_saes64_imix_t == 0 && op_saes64_encs_t == 0 && op_saes64_encsm_t == 0 && op_saes64_decs_t == 0 && op_saes64_decsm_t == 0}
 assert {rd_t == 0}
 
 
