@@ -266,7 +266,7 @@ assign      sb_inv_in[6]= `BY(shiftrows_dec, 6);
 assign      sb_inv_in[7]= `BY(shiftrows_dec, 7);
 
 // taint variation of sbox inouts direct from rs1
-assign      sb_fwd_in_t = (op_saes64_ks1 ? ks1_sb0_t : shiftrows_enc_t) || (sb_fwd_in_t && (ks1_sb0_t != shiftrows_enc_t));
+assign      sb_fwd_in_t = (op_saes64_ks1_t ? ks1_sb0_t : shiftrows_enc_t) || (op_saes64_ks1_t && (ks1_sb0_t != shiftrows_enc_t));
 assign      sb_inv_in_t = shiftrows_dec_t;
 
 // Decrypt sbox output
