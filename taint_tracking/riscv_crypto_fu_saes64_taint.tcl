@@ -8,7 +8,7 @@ reset g_resetn -non_resettable_regs 0
 
 # check once the computation is finsihed that there is no 
 # information leak to the registar where data is stored
-assume {rs1_t == 1}
+assume {valid_t == 1}
 assert {ready -> !rd_t}
 
 
