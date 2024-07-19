@@ -8,7 +8,8 @@ module SAES64_Tester (
 input g_clk, // Global clock
 input  g_resetn, // Synchronous active low reset.
 input   valid, // Are the inputs valid?
-input  [ 63:0] rs1, // Source register 1
+input  [ 63:0] rs1,
+input  [ 63:0] rs1_copy, // Source register 1
 input   [ 63:0] rs2, // Source register 2
 input   [  3:0] enc_rcon, // rcon immediate for ks1 instruction
 input op_saes64_ks1, // RV64 AES Encrypt KeySchedule 1
@@ -32,7 +33,7 @@ riscv_crypto_fu_saes64 num1(
     .g_clk(g_clk),
     .g_resetn(g_resetn),
     .valid(valid),
-    .rs1(rs1),
+    .rs1(rs1_copy),
     .rs2(rs2),
     .enc_rcon(enc_rcon),
      .op_saes64_ks1(op_saes64_ks1),
