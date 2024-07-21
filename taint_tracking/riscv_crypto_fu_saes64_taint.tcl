@@ -16,4 +16,5 @@ assert {ready_t == 0}
 
 # Set the time limit to 1 hour (3600 seconds)
 set_prove_time_limit 3600
+set_engine_mode Tri
 prove -all
