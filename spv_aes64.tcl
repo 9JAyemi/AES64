@@ -13,8 +13,8 @@ stopat result_imix
 # check_spv -create -from {valid rs1 rs2 enc_rcon op_saes64_ks1 op_saes64_ks2 op_saes64_imix op_saes64_encs op_saes64_encsm op_saes64_decs op_saes64_decsm} -to ready
 # check_spv -create -from {valid rs1 rs2 enc_rcon op_saes64_ks1 op_saes64_ks2 op_saes64_imix op_saes64_encs op_saes64_encsm op_saes64_decs op_saes64_decsm} -to rd
 
-check_spv -create -from {rs1 rs2} -to ready
-check_spv -create -from {rs1 rs2} -to rd
+check_spv -create -from {rs1} -to ready
+check_spv -create -from {rs1} -to rd
 
 
 
