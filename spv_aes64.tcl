@@ -5,8 +5,8 @@ elaborate -top riscv_crypto_fu_saes64
 clock g_clk
 reset g_resetn -non_resettable_regs 0
 
-# stopat result_ks1
-# stopat result_ks2
+stopat result_ks1
+stopat result_ks2
 # stopat result_enc
 # stopat result_dec
 # stopat result_imix
